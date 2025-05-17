@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Users, MessageSquare, Clock, TrendingUp, 
-  Input, Output, Filter, Search, LogOut 
+  ArrowRight, ArrowLeft, Filter, Search, LogOut 
 } from "lucide-react";
 import { fetchSummaryData, fetchExecutions, SummaryData, ExecutionsResponse } from "@/services/api";
 import StatsCard from "@/components/StatsCard";
@@ -142,13 +142,13 @@ const Dashboard = () => {
         <StatsCard 
           title="Input Tokens" 
           value={summaryData?.prompt_tokens || "0"}
-          icon={<Input size={20} />}
+          icon={<ArrowRight size={20} />}
           isLoading={isLoading}
         />
         <StatsCard 
           title="Output Tokens" 
           value={summaryData?.completion_tokens || "0"}
-          icon={<Output size={20} />}
+          icon={<ArrowLeft size={20} />}
           isLoading={isLoading}
         />
       </div>
