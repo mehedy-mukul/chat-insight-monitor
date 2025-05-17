@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { API_BASE_URL, API_AUTH_KEY } from '@/config/env';
 
@@ -20,13 +19,6 @@ export interface Execution {
   execution_id: number;
   session_id: string;
   employee_id: string;
-  id: string;
-  model: string;
-  prompt: string;
-  response: string;
-  startTime: string;
-  endTime: string;
-  timestamp: string;
   input: {
     tokens: number;
     query: string;
@@ -38,7 +30,6 @@ export interface Execution {
     time: string;
   };
   status: string;
-  cost: number;
 }
 
 export interface ExecutionsResponse {
@@ -84,7 +75,7 @@ export const fetchSummaryData = async (): Promise<ApiResponse<SummaryData>> => {
 export const fetchExecutions = async (
   page = 1,
   limit = 10,
-  filters: Record<string, any> = {}
+  filters: Record<string, string> = {}
 ): Promise<ApiResponse<ExecutionsResponse>> => {
   // Build query parameters for pagination and filters
   const queryParams = new URLSearchParams({

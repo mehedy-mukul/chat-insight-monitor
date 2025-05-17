@@ -9,7 +9,6 @@ import Login from "./pages/Login";
 import Executions from "./pages/Executions";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import MainLayout from "./components/MainLayout";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +20,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" />;
   }
   
-  return <MainLayout>{children}</MainLayout>;
+  return <>{children}</>;
 };
 
 const AppRoutes = () => (

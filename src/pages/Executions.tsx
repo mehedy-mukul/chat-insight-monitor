@@ -1,178 +1,237 @@
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Filter, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { fetchExecutions, ExecutionsResponse } from "@/services/api";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { fetchExecutions } from "@/services/api";
-import { formatDate } from "@/lib/utils";
-
-interface Execution {
-  id: string;
-  timestamp: string;
-  input: string;
-  output: string;
-  status: "success" | "failure" | "pending";
-}
-
-interface Filters {
-  status: "all" | "success" | "failure" | "pending";
-  search: string;
-}
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
 
 const Executions = () => {
-  const [filters, setFilters] = useState<Filters>({
-    status: "all",
-    search: "",
+  const [executionsData, setExecutionsData] = useState<ExecutionsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState({
+    employeeId: "",
+    sessionId: ""
   });
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const navigate = useNavigate();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["executions", filters, page, pageSize],
-    queryFn: () => fetchExecutions(page, pageSize, { status: filters.status, search: filters.search })
-  });
-
-  const handleStatusChange = (status: string) => {
-    setFilters({ ...filters, status: status as Filters["status"] });
-    setPage(1);
+  const fetchData = async (page: number, filterParams = filters) => {
+    setIsLoading(true);
+    try {
+      const executionsResponse = await fetchExecutions(page, 10, {
+        employee_id: filterParams.employeeId,
+        session_id: filterParams.sessionId
+      });
+      
+      if (executionsResponse.data) {
+        setExecutionsData(executionsResponse.data);
+        setCurrentPage(page);
+      }
+    } catch (error) {
+      console.error("Error fetching executions:", error);
+      toast.error("Failed to load execution data");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, search: e.target.value });
-    setPage(1);
+  useEffect(() => {
+    fetchData(1);
+  }, []);
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const totalPages = data?.data ? Math.ceil(Number(data.data.total) / pageSize) : 0;
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+  const handleApplyFilters = () => {
+    fetchData(1, filters);
   };
 
-  const executionsData = data?.data?.results || [];
+  const handleClearFilters = () => {
+    const clearedFilters = {
+      employeeId: "",
+      sessionId: ""
+    };
+    setFilters(clearedFilters);
+    fetchData(1, clearedFilters);
+  };
+
+  const handlePageChange = (direction: "next" | "prev") => {
+    const newPage = direction === "next" ? currentPage + 1 : currentPage - 1;
+    if (newPage >= 1) {
+      fetchData(newPage);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold">Executions</h1>
-        <p className="text-muted-foreground">
-          View and filter all AI chatbot executions
-        </p>
+    <div className="container mx-auto py-6 max-w-7xl">
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="ghost" 
+          className="mr-2" 
+          onClick={() => navigate("/")}
+        >
+          <ChevronLeft size={16} className="mr-1" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold">All Executions</h1>
       </div>
-
-      <Card>
+      
+      <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Executions List</CardTitle>
-          <CardDescription>
-            Filter and search through the executions.
-          </CardDescription>
+          <CardTitle>AI Chatbot Executions</CardTitle>
+          <CardDescription>Complete list of all chatbot interactions</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="flex items-center space-x-2">
-              <Input
-                type="search"
-                placeholder="Search executions..."
-                value={filters.search}
-                onChange={handleSearchChange}
-              />
+        <CardContent>
+          <div className="bg-muted/40 p-4 rounded-md mb-4">
+            <div className="text-sm font-medium mb-2 flex items-center">
+              <Filter size={16} className="mr-2" />
+              Filter Results
             </div>
-            <div>
-              <Select onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="failure">Failure</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label htmlFor="employeeId" className="text-xs font-medium">
+                  Employee ID
+                </label>
+                <Input
+                  id="employeeId"
+                  placeholder="Filter by employee ID"
+                  value={filters.employeeId}
+                  onChange={(e) => handleFilterChange("employeeId", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="sessionId" className="text-xs font-medium">
+                  Session ID
+                </label>
+                <Input
+                  id="sessionId"
+                  placeholder="Filter by session ID"
+                  value={filters.sessionId}
+                  onChange={(e) => handleFilterChange("sessionId", e.target.value)}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button variant="secondary" className="flex-1" onClick={handleApplyFilters}>
+                  <Search size={16} className="mr-2" />
+                  Apply
+                </Button>
+                <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
+              </div>
             </div>
           </div>
 
-          <div className="relative overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">ID</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Input</TableHead>
-                  <TableHead>Output</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading && (
+          {isLoading ? (
+            <div className="flex flex-col gap-2">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="h-12 bg-muted/60 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-4 italic text-muted-foreground"
-                    >
-                      Loading executions...
-                    </TableCell>
+                    <TableHead className="w-[100px]">Execution ID</TableHead>
+                    <TableHead>Employee ID</TableHead>
+                    <TableHead>Session ID</TableHead>
+                    <TableHead>Start Time</TableHead>
+                    <TableHead>End Time</TableHead>
+                    <TableHead>Input</TableHead>
+                    <TableHead>Output</TableHead>
+                    <TableHead className="text-right">Token Usage</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                )}
-                {error && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-4 italic text-red-500"
-                    >
-                      Error: {error instanceof Error ? error.message : 'Unknown error'}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {executionsData.map((execution) => (
-                  <TableRow key={execution.id}>
-                    <TableCell className="font-medium">{execution.id}</TableCell>
-                    <TableCell>{formatDate(execution.timestamp)}</TableCell>
-                    <TableCell>{execution.input}</TableCell>
-                    <TableCell>{execution.output}</TableCell>
-                    <TableCell>{execution.status}</TableCell>
-                  </TableRow>
-                ))}
-                {executionsData.length === 0 && !isLoading && !error && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-4 italic text-muted-foreground"
-                    >
-                      No executions found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex items-center justify-between px-4 py-2">
-            <Button
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-              variant="outline"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Previous
-            </Button>
-            <span>
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === totalPages || totalPages === 0}
-              variant="outline"
-            >
-              Next
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {executionsData?.results.map((execution) => (
+                    <TableRow key={execution.execution_id}>
+                      <TableCell className="font-medium">
+                        {execution.execution_id}
+                      </TableCell>
+                      <TableCell>{execution.employee_id}</TableCell>
+                      <TableCell className="max-w-[150px] truncate">
+                        <span title={execution.session_id}>
+                          {execution.session_id}
+                        </span>
+                      </TableCell>
+                      <TableCell>{formatDate(execution.input.time)}</TableCell>
+                      <TableCell>{formatDate(execution.output.time)}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        <span title={execution.input.query}>
+                          {execution.input.query}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        <span title={execution.output.query}>
+                          {execution.output.query}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {execution.input.tokens + execution.output.tokens}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          execution.status === "success" 
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-red-100 text-red-800"
+                        }`}>
+                          {execution.status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  
+                  {(!executionsData?.results || executionsData.results.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="h-24 text-center">
+                        No results found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
+        <CardFooter className="flex justify-between items-center border-t p-4">
+          <div className="text-sm text-muted-foreground">
+            Showing page {currentPage} ({executionsData?.results?.length || 0} of {executionsData?.total || 0} records)
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => handlePageChange("prev")}
+              disabled={!executionsData?.previous}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => handlePageChange("next")}
+              disabled={!executionsData?.next}
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );
