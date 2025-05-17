@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -36,12 +37,12 @@ const Dashboard = () => {
   const [modelFilter, setModelFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery(
-    ["executions", page, itemsPerPage, modelFilter, statusFilter],
-    () => fetchExecutions(page, itemsPerPage, modelFilter, statusFilter)
-  );
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["executions", page, itemsPerPage, modelFilter, statusFilter],
+    queryFn: () => fetchExecutions(page, itemsPerPage, { model: modelFilter, status: statusFilter })
+  });
 
-  const totalPages = data ? Math.ceil(data.total / itemsPerPage) : 0;
+  const totalPages = data?.data ? Math.ceil(Number(data.data.total) / itemsPerPage) : 0;
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -62,11 +63,19 @@ const Dashboard = () => {
     setPage(1); // Reset to the first page when the filter changes
   };
 
-  const models = data?.data ? [...new Set(data.data.map((item: Execution) => item.model))] : [];
+  // Safely handle data access with optional chaining
+  const executionsData = data?.data?.results || [];
+  const models = executionsData.length > 0 
+    ? [...new Set(executionsData.map((item) => item.model || ''))] 
+    : [];
 
-  const totalExecutions = data?.total || 0;
-  const successRate = data?.data ? (data.data.filter((item: Execution) => item.status === "success").length / totalExecutions) * 100 : 0;
-  const averageCost = data?.data ? data.data.reduce((acc: number, item: Execution) => acc + item.cost, 0) / totalExecutions : 0;
+  const totalExecutions = data?.data?.total ? Number(data.data.total) : 0;
+  const successRate = executionsData.length > 0
+    ? (executionsData.filter((item) => item.status === "success").length / executionsData.length) * 100
+    : 0;
+  const averageCost = executionsData.length > 0
+    ? executionsData.reduce((acc, item) => acc + (item.cost || 0), 0) / executionsData.length
+    : 0;
 
   return (
     <div className="space-y-4">
@@ -135,8 +144,8 @@ const Dashboard = () => {
                     <SelectContent>
                       <SelectItem value="all">All Models</SelectItem>
                       {models.map((model) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
+                        <SelectItem key={model || 'unknown'} value={model || 'unknown'}>
+                          {model || 'Unknown'}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -177,26 +186,26 @@ const Dashboard = () => {
                     {error && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center">
-                          Error: {error.message}
+                          Error: {error instanceof Error ? error.message : 'Unknown error'}
                         </TableCell>
                       </TableRow>
                     )}
-                    {data?.data.map((execution) => (
+                    {executionsData.map((execution) => (
                       <TableRow key={execution.id}>
                         <TableCell className="font-medium">{execution.model}</TableCell>
                         <TableCell>{execution.prompt}</TableCell>
                         <TableCell>{execution.response}</TableCell>
                         <TableCell className="text-right">
-                          <Badge variant={execution.status === "success" ? "success" : "destructive"}>
+                          <Badge variant={execution.status === "success" ? "default" : "destructive"}>
                             {execution.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">${execution.cost.toFixed(4)}</TableCell>
+                        <TableCell className="text-right">${execution.cost?.toFixed(4) || '0.0000'}</TableCell>
                         <TableCell className="text-right">{formatDate(execution.startTime)}</TableCell>
                         <TableCell className="text-right">{formatDate(execution.endTime)}</TableCell>
                       </TableRow>
                     ))}
-                    {data?.data.length === 0 && !isLoading && (
+                    {executionsData.length === 0 && !isLoading && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center">
                           No executions found.

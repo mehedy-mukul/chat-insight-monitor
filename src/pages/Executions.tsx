@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -31,10 +32,10 @@ const Executions = () => {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  const { data, isLoading, error } = useQuery(
-    ["executions", filters, page, pageSize],
-    () => fetchExecutions(filters.status, filters.search, page, pageSize)
-  );
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["executions", filters, page, pageSize],
+    queryFn: () => fetchExecutions(page, pageSize, { status: filters.status, search: filters.search })
+  });
 
   const handleStatusChange = (status: string) => {
     setFilters({ ...filters, status: status as Filters["status"] });
@@ -46,11 +47,13 @@ const Executions = () => {
     setPage(1);
   };
 
-  const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
+  const totalPages = data?.data ? Math.ceil(Number(data.data.total) / pageSize) : 0;
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
+
+  const executionsData = data?.data?.results || [];
 
   return (
     <div className="space-y-4">
@@ -121,11 +124,11 @@ const Executions = () => {
                       colSpan={5}
                       className="text-center py-4 italic text-red-500"
                     >
-                      Error: {error.message}
+                      Error: {error instanceof Error ? error.message : 'Unknown error'}
                     </TableCell>
                   </TableRow>
                 )}
-                {data?.executions.map((execution) => (
+                {executionsData.map((execution) => (
                   <TableRow key={execution.id}>
                     <TableCell className="font-medium">{execution.id}</TableCell>
                     <TableCell>{formatDate(execution.timestamp)}</TableCell>
@@ -134,7 +137,7 @@ const Executions = () => {
                     <TableCell>{execution.status}</TableCell>
                   </TableRow>
                 ))}
-                {data?.executions.length === 0 && !isLoading && !error && (
+                {executionsData.length === 0 && !isLoading && !error && (
                   <TableRow>
                     <TableCell
                       colSpan={5}
