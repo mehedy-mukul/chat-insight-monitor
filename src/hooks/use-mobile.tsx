@@ -1,19 +1,37 @@
-import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+import { useCallback, useEffect, useState } from "react"
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 768px)").matches
+      : false
+  )
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+  const handleResize = useCallback(() => {
+    if (typeof window !== "undefined") {
+      setIsMobile(window.matchMedia("(max-width: 768px)").matches)
     }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
   }, [])
 
-  return !!isMobile
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mediaQueryList = window.matchMedia("(max-width: 768px)")
+      setIsMobile(mediaQueryList.matches)
+
+      // Use the addEventListener if supported, otherwise fall back to the
+      // older addListener API.
+      if (mediaQueryList.addEventListener) {
+        mediaQueryList.addEventListener("change", handleResize)
+        return () => mediaQueryList.removeEventListener("change", handleResize)
+      } else {
+        // @ts-ignore - Legacy API, TypeScript doesn't have types for this
+        mediaQueryList.addListener(handleResize)
+        // @ts-ignore - Legacy API
+        return () => mediaQueryList.removeListener(handleResize)
+      }
+    }
+  }, [handleResize])
+
+  return isMobile
 }

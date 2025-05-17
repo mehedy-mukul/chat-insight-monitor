@@ -1,294 +1,251 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { 
-  Users, MessageSquare, Clock, TrendingUp, 
-  ArrowRight, ArrowLeft, Filter, Search, LogOut 
-} from "lucide-react";
-import { fetchSummaryData, fetchExecutions, SummaryData, ExecutionsResponse } from "@/services/api";
-import StatsCard from "@/components/StatsCard";
-import ThemeToggle from "@/components/ThemeToggle";
-import { Button } from "@/components/ui/button";
-import { Input as InputField } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/utils";
+import { fetchExecutions } from "@/services/api";
+import StatsCard from "@/components/StatsCard";
+
+interface Execution {
+  id: string;
+  model: string;
+  prompt: string;
+  response: string;
+  startTime: string;
+  endTime: string;
+  status: "success" | "failure";
+  cost: number;
+}
+
+interface ApiResponse {
+  data: Execution[];
+  total: number;
+}
+
+const itemsPerPageOptions = [5, 10, 20];
 
 const Dashboard = () => {
-  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
-  const [executionsData, setExecutionsData] = useState<ExecutionsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    employeeId: "",
-    sessionId: ""
-  });
-  const navigate = useNavigate();
-  const { logout } = useAuth();
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(itemsPerPageOptions[0]);
+  const [modelFilter, setModelFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch summary data
-        const summaryResponse = await fetchSummaryData();
-        if (summaryResponse.data) {
-          setSummaryData(summaryResponse.data);
-        }
+  const { data, isLoading, error } = useQuery(
+    ["executions", page, itemsPerPage, modelFilter, statusFilter],
+    () => fetchExecutions(page, itemsPerPage, modelFilter, statusFilter)
+  );
 
-        // Fetch executions data
-        const executionsResponse = await fetchExecutions(1, 10);
-        if (executionsResponse.data) {
-          setExecutionsData(executionsResponse.data);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        toast.error("Failed to load dashboard data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const totalPages = data ? Math.ceil(data.total / itemsPerPage) : 0;
 
-    fetchData();
-  }, []);
-
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
-  const handleApplyFilters = async () => {
-    setIsLoading(true);
-    try {
-      const filteredResults = await fetchExecutions(1, 10, {
-        employee_id: filters.employeeId,
-        session_id: filters.sessionId
-      });
-      
-      if (filteredResults.data) {
-        setExecutionsData(filteredResults.data);
-      }
-    } catch (error) {
-      toast.error("Failed to filter results");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setPage(1); // Reset to the first page when items per page changes
   };
 
-  const handleClearFilters = async () => {
-    setFilters({
-      employeeId: "",
-      sessionId: ""
-    });
-    
-    setIsLoading(true);
-    try {
-      const results = await fetchExecutions(1, 10);
-      if (results.data) {
-        setExecutionsData(results.data);
-      }
-    } catch (error) {
-      toast.error("Failed to reset filters");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleModelFilterChange = (value: string) => {
+    setModelFilter(value === "all" ? null : value);
+    setPage(1); // Reset to the first page when the filter changes
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value === "all" ? null : value);
+    setPage(1); // Reset to the first page when the filter changes
   };
+
+  const models = data?.data ? [...new Set(data.data.map((item: Execution) => item.model))] : [];
+
+  const totalExecutions = data?.total || 0;
+  const successRate = data?.data ? (data.data.filter((item: Execution) => item.status === "success").length / totalExecutions) * 100 : 0;
+  const averageCost = data?.data ? data.data.reduce((acc: number, item: Execution) => acc + item.cost, 0) / totalExecutions : 0;
 
   return (
-    <div className="container mx-auto py-6 max-w-7xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">AI Chatbot Monitor Dashboard</h1>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <Button variant="outline" onClick={logout} className="flex items-center gap-2">
-            <LogOut size={16} />
-            Logout
-          </Button>
-        </div>
+    <div className="space-y-4">
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Overview of AI chatbot performance and recent executions
+        </p>
       </div>
-      
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
-        <StatsCard 
-          title="Total Users" 
-          value={summaryData?.total_employees || "0"}
-          icon={<Users size={20} />}
-          isLoading={isLoading}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Total Executions"
+          value={totalExecutions.toString()}
+          description="Total number of executions"
         />
-        <StatsCard 
-          title="Total Chats" 
-          value={summaryData?.total_chats || "0"}
-          icon={<MessageSquare size={20} />}
-          isLoading={isLoading}
+        <StatsCard
+          title="Success Rate"
+          value={`${successRate.toFixed(2)}%`}
+          description="Percentage of successful executions"
         />
-        <StatsCard 
-          title="Total Sessions" 
-          value={summaryData?.total_sessions || "0"}
-          icon={<Clock size={20} />}
-          isLoading={isLoading}
+        <StatsCard
+          title="Average Cost"
+          value={`$${averageCost.toFixed(4)}`}
+          description="Average cost per execution"
         />
-        <StatsCard 
-          title="Total Tokens" 
-          value={summaryData?.total_tokens || "0"}
-          icon={<TrendingUp size={20} />}
-          isLoading={isLoading}
-        />
-        <StatsCard 
-          title="Input Tokens" 
-          value={summaryData?.prompt_tokens || "0"}
-          icon={<ArrowRight size={20} />}
-          isLoading={isLoading}
-        />
-        <StatsCard 
-          title="Output Tokens" 
-          value={summaryData?.completion_tokens || "0"}
-          icon={<ArrowLeft size={20} />}
-          isLoading={isLoading}
+        <StatsCard
+          title="Uptime"
+          value="99.99%"
+          description="AI Chatbot Uptime"
         />
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <CardTitle>Chat Executions</CardTitle>
-              <CardDescription>Recent AI chatbot interactions</CardDescription>
-            </div>
-            <Button onClick={() => navigate("/executions")}>View All</Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-muted/40 p-4 rounded-md mb-4">
-            <div className="text-sm font-medium mb-2 flex items-center">
-              <Filter size={16} className="mr-2" />
-              Filter Results
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label htmlFor="employeeId" className="text-xs font-medium">
-                  Employee ID
-                </label>
-                <InputField
-                  id="employeeId"
-                  placeholder="Filter by employee ID"
-                  value={filters.employeeId}
-                  onChange={(e) => handleFilterChange("employeeId", e.target.value)}
-                />
+      <Tabs defaultValue="recent" className="w-full">
+        <TabsList>
+          <TabsTrigger value="recent">Recent Executions</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+        <TabsContent value="recent" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Executions</CardTitle>
+              <CardDescription>
+                A list of recent AI chatbot executions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center space-x-2">
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => handleItemsPerPageChange(parseInt(value))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder={`${itemsPerPage} items per page`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {itemsPerPageOptions.map((option) => (
+                        <SelectItem key={option} value={option.toString()}>
+                          {option} items per page
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={modelFilter || "all"} onValueChange={handleModelFilterChange}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by Model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Models</SelectItem>
+                      {models.map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter || "all"} onValueChange={handleStatusFilterChange}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Filter by Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="success">Success</SelectItem>
+                      <SelectItem value="failure">Failure</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label htmlFor="sessionId" className="text-xs font-medium">
-                  Session ID
-                </label>
-                <InputField
-                  id="sessionId"
-                  placeholder="Filter by session ID"
-                  value={filters.sessionId}
-                  onChange={(e) => handleFilterChange("sessionId", e.target.value)}
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <Button variant="secondary" className="flex-1" onClick={handleApplyFilters}>
-                  <Search size={16} className="mr-2" />
-                  Apply
-                </Button>
-                <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
-              </div>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="flex flex-col gap-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-12 bg-muted/60 rounded animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Execution ID</TableHead>
-                    <TableHead>Employee ID</TableHead>
-                    <TableHead>Session ID</TableHead>
-                    <TableHead>Start Time</TableHead>
-                    <TableHead>End Time</TableHead>
-                    <TableHead>Input</TableHead>
-                    <TableHead>Output</TableHead>
-                    <TableHead className="text-right">Token Usage</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {executionsData?.results && executionsData.results.length > 0 ? (
-                    executionsData.results.map((execution) => (
-                      <TableRow key={execution.execution_id}>
-                        <TableCell className="font-medium">
-                          {execution.execution_id}
-                        </TableCell>
-                        <TableCell>{execution.employee_id}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">
-                          <span title={execution.session_id}>
-                            {execution.session_id}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {execution.input && execution.input.time ? formatDate(execution.input.time) : "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          {execution.output && execution.output.time ? formatDate(execution.output.time) : "N/A"}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          <span title={execution.input?.query || ""}>
-                            {execution.input?.query || "N/A"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          <span title={execution.output?.query || ""}>
-                            {execution.output?.query || "N/A"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {(execution.input?.tokens || 0) + (execution.output?.tokens || 0)}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            execution.status === "success" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                            {execution.status}
-                          </span>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">Model</TableHead>
+                      <TableHead>Prompt</TableHead>
+                      <TableHead>Response</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                      <TableHead className="text-right">Cost</TableHead>
+                      <TableHead className="text-right">Start Time</TableHead>
+                      <TableHead className="text-right">End Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center">
+                          Loading...
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={9} className="h-24 text-center">
-                        No results found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-between border-t p-4">
-          <div className="text-sm text-muted-foreground">
-            Showing {executionsData?.results?.length || 0} of {executionsData?.total || 0} records
-          </div>
-        </CardFooter>
-      </Card>
+                    )}
+                    {error && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center">
+                          Error: {error.message}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {data?.data.map((execution) => (
+                      <TableRow key={execution.id}>
+                        <TableCell className="font-medium">{execution.model}</TableCell>
+                        <TableCell>{execution.prompt}</TableCell>
+                        <TableCell>{execution.response}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={execution.status === "success" ? "success" : "destructive"}>
+                            {execution.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">${execution.cost.toFixed(4)}</TableCell>
+                        <TableCell className="text-right">{formatDate(execution.startTime)}</TableCell>
+                        <TableCell className="text-right">{formatDate(execution.endTime)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {data?.data.length === 0 && !isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center">
+                          No executions found.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </div>
+                <div className="space-x-2">
+                  <Button
+                    variant="outline"
+                    disabled={page === 1}
+                    onClick={() => handlePageChange(page - 1)}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={page === totalPages}
+                    onClick={() => handlePageChange(page + 1)}
+                  >
+                    Next
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics</CardTitle>
+              <CardDescription>
+                Detailed analytics of AI chatbot executions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Coming Soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
