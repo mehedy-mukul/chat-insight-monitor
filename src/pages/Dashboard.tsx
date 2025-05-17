@@ -229,45 +229,49 @@ const Dashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {executionsData?.results.map((execution) => (
-                    <TableRow key={execution.execution_id}>
-                      <TableCell className="font-medium">
-                        {execution.execution_id}
-                      </TableCell>
-                      <TableCell>{execution.employee_id}</TableCell>
-                      <TableCell className="max-w-[150px] truncate">
-                        <span title={execution.session_id}>
-                          {execution.session_id}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatDate(execution.input.time)}</TableCell>
-                      <TableCell>{formatDate(execution.output.time)}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        <span title={execution.input.query}>
-                          {execution.input.query}
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        <span title={execution.output.query}>
-                          {execution.output.query}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {execution.input.tokens + execution.output.tokens}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          execution.status === "success" 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-red-100 text-red-800"
-                        }`}>
-                          {execution.status}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  
-                  {(!executionsData?.results || executionsData.results.length === 0) && (
+                  {executionsData?.results && executionsData.results.length > 0 ? (
+                    executionsData.results.map((execution) => (
+                      <TableRow key={execution.execution_id}>
+                        <TableCell className="font-medium">
+                          {execution.execution_id}
+                        </TableCell>
+                        <TableCell>{execution.employee_id}</TableCell>
+                        <TableCell className="max-w-[150px] truncate">
+                          <span title={execution.session_id}>
+                            {execution.session_id}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {execution.input && execution.input.time ? formatDate(execution.input.time) : "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {execution.output && execution.output.time ? formatDate(execution.output.time) : "N/A"}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          <span title={execution.input?.query || ""}>
+                            {execution.input?.query || "N/A"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          <span title={execution.output?.query || ""}>
+                            {execution.output?.query || "N/A"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(execution.input?.tokens || 0) + (execution.output?.tokens || 0)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            execution.status === "success" 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-red-100 text-red-800"
+                          }`}>
+                            {execution.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
                     <TableRow>
                       <TableCell colSpan={9} className="h-24 text-center">
                         No results found
