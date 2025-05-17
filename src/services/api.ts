@@ -1,8 +1,5 @@
-
 import { toast } from "sonner";
-
-const API_BASE_URL = "http://localhost:5678";
-const AUTH_KEY = "mysecretkey";
+import { API_BASE_URL, API_AUTH_KEY } from '@/config/env';
 
 interface ApiResponse<T> {
   data: T | null;
@@ -51,7 +48,7 @@ async function fetchApi<T>(endpoint: string, options = {}): Promise<ApiResponse<
       ...options,
       headers: {
         "Content-Type": "application/json",
-        Authorization: AUTH_KEY,
+        Authorization: API_AUTH_KEY,
         ...((options as any).headers || {}),
       },
     });

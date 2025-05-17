@@ -1,11 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
-
-// Define hard-coded credentials
-const ADMIN_EMAIL = "admin@example.com";
-const ADMIN_PASSWORD = "password123";
+import { ADMIN_EMAIL, ADMIN_PASSWORD } from '@/config/env';
 
 // Define auth context types
 interface AuthContextType {
@@ -32,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [navigate]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Check credentials against hard-coded values
+    // Check credentials against environment variables
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       localStorage.setItem('auth', 'true');

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { fetchSummaryData, fetchExecutions, SummaryData, ExecutionsResponse } from "@/services/api";
 import StatsCard from "@/components/StatsCard";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input as InputField } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -108,10 +109,13 @@ const Dashboard = () => {
     <div className="container mx-auto py-6 max-w-7xl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">AI Chatbot Monitor Dashboard</h1>
-        <Button variant="outline" onClick={logout} className="flex items-center gap-2">
-          <LogOut size={16} />
-          Logout
-        </Button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Button variant="outline" onClick={logout} className="flex items-center gap-2">
+            <LogOut size={16} />
+            Logout
+          </Button>
+        </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">

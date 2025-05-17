@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { ADMIN_EMAIL } from "@/config/env";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -29,7 +29,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-md p-4">
         <Card className="shadow-lg">
           <CardHeader className="space-y-1 text-center">
@@ -43,7 +43,7 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder={ADMIN_EMAIL}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -74,8 +74,8 @@ const Login = () => {
             </CardFooter>
           </form>
         </Card>
-        <div className="mt-4 text-center text-sm text-gray-500">
-          <p>For demo use: admin@example.com / password123</p>
+        <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>For demo use: {ADMIN_EMAIL}</p>
         </div>
       </div>
     </div>
