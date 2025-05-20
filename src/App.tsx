@@ -7,10 +7,19 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Executions from "./pages/Executions";
+import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -39,6 +48,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <Executions />
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/chat/:sessionId" 
+      element={
+        <ProtectedRoute>
+          <Chat />
         </ProtectedRoute>
       } 
     />

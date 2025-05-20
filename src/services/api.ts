@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { API_BASE_URL, API_AUTH_KEY } from '@/config/env';
 
@@ -26,7 +27,8 @@ export interface Execution {
   };
   output: {
     tokens: number;
-    query: string;
+    query?: string;
+    answer?: string;
     time: string;
   };
   status: string;
@@ -91,4 +93,19 @@ export const fetchExecutions = async (
   });
   
   return fetchApi<ExecutionsResponse>(`/webhook/executions?${queryParams.toString()}`);
+};
+
+// Get session messages
+export const fetchSessionExecutions = async (
+  sessionId: string,
+  page = 1,
+  limit = 100
+): Promise<ApiResponse<ExecutionsResponse>> => {
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    query: sessionId
+  });
+  
+  return fetchApi<ExecutionsResponse>(`/webhook/executions/session?${queryParams.toString()}`);
 };
